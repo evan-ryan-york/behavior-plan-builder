@@ -11,11 +11,12 @@ export async function POST(request: Request) {
 
     const supabase = await createClient();
 
-    // Update the plan status to complete
+    // Update the plan status to complete with finalized_at timestamp
     const { data: plan, error: updateError } = await supabase
       .from("plans")
       .update({
         status: "complete",
+        finalized_at: new Date().toISOString(),
       })
       .eq("id", planId)
       .select()

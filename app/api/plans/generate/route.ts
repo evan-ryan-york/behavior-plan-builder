@@ -3,7 +3,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { getAnthropic, DEFAULT_MODEL } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
-import { functionInfo, BehaviorFunction } from "@/lib/assessment-questions";
+import { functionInfo, BehaviorFunction, determinePrimaryFunction } from "@/lib/assessment-questions";
 
 // Schema for the generated plan content
 const planSchema = z.object({
@@ -78,6 +78,26 @@ export async function POST(request: Request) {
       ? getFunctionExplanation(determinedFunction)
       : "meet an underlying need";
 
+    // Check for multiple functions (tied or close scores)
+    let secondaryFunction: BehaviorFunction | null = null;
+    let multipleFunctionsText = "";
+    if (plan.function_scores) {
+      const determination = determinePrimaryFunction(plan.function_scores as Record<BehaviorFunction, number | null>);
+      if (determination.primary === "multiple" && determination.tiedFunctions && determination.tiedFunctions.length > 1) {
+        // Get the two highest scoring functions
+        const sortedFunctions = determination.tiedFunctions;
+        secondaryFunction = sortedFunctions[1] || null;
+        if (secondaryFunction) {
+          multipleFunctionsText = `
+IMPORTANT: This behavior appears to serve MULTIPLE functions:
+- Primary: ${functionInfo[determinedFunction]?.label || determinedFunction} - ${getFunctionExplanation(determinedFunction)}
+- Secondary: ${functionInfo[secondaryFunction]?.label || secondaryFunction} - ${getFunctionExplanation(secondaryFunction)}
+
+The plan should address BOTH functions. Prevention strategies and interventions should target both functions.`;
+        }
+      }
+    }
+
     // Parse implementers
     let implementersDisplay = "Not specified";
     if (plan.implementer) {
@@ -119,6 +139,7 @@ This means the student likely engages in this behavior to ${functionExplanation}
 ADDITIONAL CONTEXT:
 Strategies already tried: ${plan.whats_been_tried || "None specified"}
 Plan will be implemented by: ${implementersDisplay}
+${multipleFunctionsText}
 
 Generate a CONCISE behavior intervention plan. Be specific and practical. Use the student's name. Avoid strategies already tried.
 
@@ -162,6 +183,7 @@ Guidelines:
     const preventionStrategiesJson = JSON.stringify(object.prevention_strategies);
 
     // Update the plan with generated content
+    const newGenerationVersion = (plan.generation_version || 0) + 1;
     const { error: updateError } = await supabase
       .from("plans")
       .update({
@@ -177,12 +199,36 @@ Guidelines:
         current_response_to_behavior: object.response_to_behavior,
         status: "generating",
         sections_reviewed: [],
+        generation_version: newGenerationVersion,
+        secondary_function: secondaryFunction,
+        revision_counts: {},
       })
       .eq("id", planId);
 
     if (updateError) {
       console.error("Error updating plan:", updateError);
       return NextResponse.json({ error: "Failed to save generated plan" }, { status: 500 });
+    }
+
+    // Create initial revision records for each section
+    const sectionsToTrack = [
+      { name: "function_summary", content: object.function_summary },
+      { name: "replacement_behavior", content: object.replacement_behavior },
+      { name: "prevention_strategies", content: preventionStrategiesJson },
+      { name: "reinforcement_plan", content: object.reinforcement_plan },
+      { name: "response_to_behavior", content: object.response_to_behavior },
+    ];
+
+    for (const section of sectionsToTrack) {
+      await supabase.from("plan_section_revisions").insert({
+        plan_id: planId,
+        section_name: section.name,
+        content: section.content,
+        revision_number: 1,
+        generation_version: newGenerationVersion,
+        feedback_given: null,
+        is_manual_edit: false,
+      });
     }
 
     return NextResponse.json({

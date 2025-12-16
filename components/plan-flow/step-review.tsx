@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Student, Plan } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Markdown } from "@/components/ui/markdown";
 import { functionInfo, BehaviorFunction } from "@/lib/assessment-questions";
 
 interface StepReviewProps {
@@ -12,6 +14,8 @@ interface StepReviewProps {
 }
 
 export function StepReview({ student, plan }: StepReviewProps) {
+  const router = useRouter();
+
   // Parse prevention strategies if stored as JSON
   let preventionStrategies: string[] = [];
   try {
@@ -22,6 +26,23 @@ export function StepReview({ student, plan }: StepReviewProps) {
   }
 
   const determinedFunction = plan.determined_function as BehaviorFunction | null;
+  const secondaryFunction = plan.secondary_function as BehaviorFunction | null;
+
+  // Format dates
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const handleEditPlan = () => {
+    // Navigate back to the plan editor (step 5)
+    // The plan-creation-flow will detect the plan status and handle appropriately
+    router.push(`/dashboard/plans/new?planId=${plan.id}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -46,6 +67,11 @@ export function StepReview({ student, plan }: StepReviewProps) {
         <p className="text-muted-foreground mt-2">
           Behavior plan for {student.name} has been finalized.
         </p>
+        {plan.finalized_at && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Finalized on {formatDate(plan.finalized_at)}
+          </p>
+        )}
       </div>
 
       {/* Coming Soon Card */}
@@ -91,12 +117,22 @@ export function StepReview({ student, plan }: StepReviewProps) {
               {plan.target_behavior || "Not specified"}
             </p>
             {determinedFunction && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Primary Function:{" "}
-                <span className="font-medium">
-                  {functionInfo[determinedFunction]?.label}
-                </span>
-              </p>
+              <div className="mt-3 pt-3 border-t">
+                <p className="text-xs text-muted-foreground">
+                  Primary Function:{" "}
+                  <span className="font-medium text-foreground">
+                    {functionInfo[determinedFunction]?.label}
+                  </span>
+                </p>
+                {secondaryFunction && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Secondary Function:{" "}
+                    <span className="font-medium text-foreground">
+                      {functionInfo[secondaryFunction]?.label}
+                    </span>
+                  </p>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -105,9 +141,9 @@ export function StepReview({ student, plan }: StepReviewProps) {
         <Card>
           <CardContent className="p-4">
             <h4 className="font-semibold text-sm mb-2">Function Summary</h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {plan.current_function_summary || "Not generated"}
-            </p>
+            <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+              <Markdown>{plan.current_function_summary || "Not generated"}</Markdown>
+            </div>
           </CardContent>
         </Card>
 
@@ -115,9 +151,9 @@ export function StepReview({ student, plan }: StepReviewProps) {
         <Card>
           <CardContent className="p-4">
             <h4 className="font-semibold text-sm mb-2">Replacement Behavior</h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {plan.current_replacement_behavior || "Not generated"}
-            </p>
+            <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+              <Markdown>{plan.current_replacement_behavior || "Not generated"}</Markdown>
+            </div>
           </CardContent>
         </Card>
 
@@ -126,19 +162,9 @@ export function StepReview({ student, plan }: StepReviewProps) {
           <CardContent className="p-4">
             <h4 className="font-semibold text-sm mb-2">Prevention Strategies</h4>
             {preventionStrategies.length > 0 ? (
-              <ul className="space-y-2">
-                {preventionStrategies.map((strategy, index) => (
-                  <li
-                    key={index}
-                    className="text-sm text-muted-foreground flex gap-2"
-                  >
-                    <span className="font-medium text-foreground">
-                      {index + 1}.
-                    </span>
-                    <span>{strategy}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+                <Markdown>{preventionStrategies.join("\n\n")}</Markdown>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">Not generated</p>
             )}
@@ -149,9 +175,9 @@ export function StepReview({ student, plan }: StepReviewProps) {
         <Card>
           <CardContent className="p-4">
             <h4 className="font-semibold text-sm mb-2">Reinforcement Plan</h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {plan.current_reinforcement_plan || "Not generated"}
-            </p>
+            <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+              <Markdown>{plan.current_reinforcement_plan || "Not generated"}</Markdown>
+            </div>
           </CardContent>
         </Card>
 
@@ -161,15 +187,50 @@ export function StepReview({ student, plan }: StepReviewProps) {
             <h4 className="font-semibold text-sm mb-2">
               Response to Target Behavior
             </h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {plan.current_response_to_behavior || "Not generated"}
-            </p>
+            <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+              <Markdown>{plan.current_response_to_behavior || "Not generated"}</Markdown>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Plan Metadata */}
+        {plan.revision_counts && Object.keys(plan.revision_counts).length > 0 && (
+          <Card className="bg-muted/30">
+            <CardContent className="p-4">
+              <h4 className="font-semibold text-sm mb-2">Revision History</h4>
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                {Object.entries(plan.revision_counts).map(([section, count]) => (
+                  <div key={section} className="flex items-center gap-1">
+                    <span className="capitalize">{section.replace(/_/g, " ")}</span>
+                    <span className="bg-muted px-1.5 py-0.5 rounded">
+                      {count} revision{count !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Navigation */}
-      <div className="flex justify-center pt-4">
+      <div className="flex justify-center gap-4 pt-4">
+        <Button variant="outline" onClick={handleEditPlan}>
+          <svg
+            className="h-4 w-4 mr-2"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+          Edit Plan
+        </Button>
         <Button asChild size="lg">
           <Link href="/dashboard">Back to Dashboard</Link>
         </Button>

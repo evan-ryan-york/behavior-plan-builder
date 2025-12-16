@@ -15,6 +15,8 @@ function getStatusBadgeStyles(status: string) {
     case "complete":
       return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "in_progress":
+    case "assessment_complete":
+    case "generating":
       return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "draft":
     default:
@@ -26,6 +28,10 @@ function formatStatus(status: string) {
   switch (status) {
     case "in_progress":
       return "In Progress";
+    case "assessment_complete":
+      return "Assessment Done";
+    case "generating":
+      return "Generating";
     case "complete":
       return "Complete";
     case "draft":
@@ -122,12 +128,12 @@ export default async function PlansPage() {
                       <Button asChild variant="outline" size="sm">
                         <Link
                           href={
-                            plan.status === "in_progress"
-                              ? `/dashboard/plans/new?studentId=${student?.id}`
-                              : `/dashboard/plans/${plan.id}`
+                            plan.status === "complete"
+                              ? `/dashboard/plans/${plan.id}`
+                              : `/dashboard/plans/new?planId=${plan.id}`
                           }
                         >
-                          {plan.status === "in_progress" ? "Continue" : "View"}
+                          {plan.status === "complete" ? "View" : "Continue"}
                         </Link>
                       </Button>
                     </div>

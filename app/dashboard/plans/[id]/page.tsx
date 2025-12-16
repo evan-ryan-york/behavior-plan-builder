@@ -14,6 +14,8 @@ function getStatusBadgeStyles(status: string) {
     case "complete":
       return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "in_progress":
+    case "assessment_complete":
+    case "generating":
       return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "draft":
     default:
@@ -25,6 +27,10 @@ function formatStatus(status: string) {
   switch (status) {
     case "in_progress":
       return "In Progress";
+    case "assessment_complete":
+      return "Assessment Done";
+    case "generating":
+      return "Generating";
     case "complete":
       return "Complete";
     case "draft":
@@ -119,7 +125,7 @@ export default async function PlanDetailPage({ params }: PageProps) {
             <p className="text-muted-foreground">{student.grade_level} Grade</p>
           )}
         </div>
-        {plan.status === "in_progress" && student && (
+        {plan.status !== "complete" && student && (
           <Button asChild>
             <Link href={`/dashboard/plans/new?planId=${plan.id}`}>
               Continue Plan
@@ -164,7 +170,7 @@ export default async function PlanDetailPage({ params }: PageProps) {
           </Card>
         </div>
 
-        {plan.status === "in_progress" && (
+        {plan.status !== "complete" && (
           <Card className="border-dashed">
             <CardContent className="py-8 text-center">
               <div className="mb-4">

@@ -1,6 +1,11 @@
 -- Migration: Add Plan Generation Fields
 -- Description: Add fields for storing generated and current plan content
 
+-- Update status constraint to include 'generating' status
+ALTER TABLE plans DROP CONSTRAINT IF EXISTS plans_status_check;
+ALTER TABLE plans ADD CONSTRAINT plans_status_check
+  CHECK (status IN ('draft', 'in_progress', 'assessment_complete', 'generating', 'complete'));
+
 -- Generated content (first AI-generated version)
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS generated_function_summary TEXT;
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS generated_replacement_behavior TEXT;

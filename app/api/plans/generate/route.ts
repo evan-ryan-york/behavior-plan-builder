@@ -7,11 +7,15 @@ import { functionInfo, BehaviorFunction } from "@/lib/assessment-questions";
 
 // Schema for the generated plan content
 const planSchema = z.object({
-  function_summary: z.string().describe("2-3 sentence explanation of why the student engages in this behavior based on the function assessment"),
-  replacement_behavior: z.string().describe("A specific, teachable replacement behavior that serves the same function"),
-  prevention_strategies: z.array(z.string()).min(3).max(5).describe("3-5 proactive strategies to prevent the target behavior"),
-  reinforcement_plan: z.string().describe("Detailed reinforcement plan including what reinforcers to use, schedule, and fading plan"),
-  response_to_behavior: z.string().describe("Step-by-step guide for how to respond when the target behavior occurs"),
+  function_summary: z.string().describe("2-3 sentence explanation of why the student engages in this behavior based on the function assessment."),
+  replacement_behavior: z.string().describe("Brief description of ONE specific replacement behavior: what it is, when to use it, and how to teach it. Keep to 3-4 short bullet points max."),
+  replacement_behavior_rationale: z.string().describe("1-2 sentence behavior science rationale explaining why this replacement behavior was chosen (e.g., functional equivalence, response effort, etc.)"),
+  prevention_strategies: z.array(z.string()).min(3).max(3).describe("Exactly 3 prevention strategies. Each strategy should be a bold title followed by 1-2 sentences of explanation."),
+  prevention_strategies_rationale: z.string().describe("1-2 sentence behavior science rationale explaining the antecedent intervention approach (e.g., abolishing operations, setting events, discriminative stimuli)."),
+  reinforcement_plan: z.string().describe("Concise reinforcement plan with 3-4 items. Each item should have a **bold title** followed by 1-2 sentences of explanation, same format as prevention strategies."),
+  reinforcement_plan_rationale: z.string().describe("1-2 sentence behavior science rationale explaining the reinforcement strategy (e.g., schedule of reinforcement, differential reinforcement, fading procedures)."),
+  response_to_behavior: z.string().describe("Exactly 3 numbered steps for responding when the behavior occurs. Keep each step to 1-2 sentences."),
+  response_to_behavior_rationale: z.string().describe("1-2 sentence behavior science rationale explaining why this response protocol avoids reinforcing the target behavior (e.g., extinction, redirection, planned ignoring)."),
 });
 
 export type GeneratedPlan = z.infer<typeof planSchema>;
@@ -116,13 +120,36 @@ ADDITIONAL CONTEXT:
 Strategies already tried: ${plan.whats_been_tried || "None specified"}
 Plan will be implemented by: ${implementersDisplay}
 
-Generate a behavior intervention plan with the following sections. Be specific, practical, and tailor everything to this specific student. Use the student's name throughout. Avoid suggesting strategies that have already been tried unless you're suggesting a modification.
+Generate a CONCISE behavior intervention plan. Be specific and practical. Use the student's name. Avoid strategies already tried.
 
-Important guidelines:
-- For the replacement behavior: It must be functionally equivalent (meets the same need), easier or as easy as the target behavior, age-appropriate, and teachable.
-- For prevention strategies: Focus on antecedent modifications—changes to the environment, routines, or demands that reduce the likelihood of the behavior.
-- For the reinforcement plan: Use the student's interests as reinforcers when possible. Include how often to reinforce and how to fade over time.
-- For response to target behavior: Ensure the response doesn't accidentally reinforce the behavior and redirects to the replacement behavior.`;
+CRITICAL: Keep each section SHORT and scannable. Educators need quick-reference content, not lengthy explanations.
+
+FORMATTING RULES:
+- Use **bold** for key terms only
+- Use bullet points (-) for lists
+- Use numbered lists (1. 2. 3.) for sequential steps
+- DO NOT use headers (## or ###) within sections - the section titles are already provided
+- Keep each bullet point to 1-2 sentences max
+
+SECTION REQUIREMENTS:
+- Function Summary: 2-3 sentences only
+- Replacement Behavior: ONE specific behavior with 3-4 bullet points (what it is, when to use, how to teach)
+- Prevention Strategies: Exactly 3 strategies, each with a **bold title** and 1-2 sentence explanation
+- Reinforcement Plan: 3-4 items using same format as Prevention Strategies (**bold title** - explanation)
+- Response to Behavior: Exactly 3 numbered steps (1. 2. 3.), each 1-2 sentences
+
+RATIONALE REQUIREMENTS:
+For each editable section, provide a brief (1-2 sentence) behavior science rationale explaining WHY you made these recommendations. Reference specific ABA/behavior science concepts such as:
+- Functional equivalence, response effort, functional communication training
+- Antecedent interventions, abolishing operations, establishing operations, setting events
+- Schedules of reinforcement, differential reinforcement (DRA, DRI, DRO), fading
+- Extinction, extinction bursts, planned ignoring, response blocking
+
+Guidelines:
+- Replacement behavior must be functionally equivalent and easier than the target behavior
+- Prevention strategies should focus on antecedent modifications
+- Use the student's interests as reinforcers
+- Response steps should not accidentally reinforce the behavior`;
 
     // Generate the plan content using Vercel AI SDK
     const { object } = await generateObject({
@@ -163,9 +190,13 @@ Important guidelines:
       plan: {
         function_summary: object.function_summary,
         replacement_behavior: object.replacement_behavior,
+        replacement_behavior_rationale: object.replacement_behavior_rationale,
         prevention_strategies: object.prevention_strategies,
+        prevention_strategies_rationale: object.prevention_strategies_rationale,
         reinforcement_plan: object.reinforcement_plan,
+        reinforcement_plan_rationale: object.reinforcement_plan_rationale,
         response_to_behavior: object.response_to_behavior,
+        response_to_behavior_rationale: object.response_to_behavior_rationale,
       },
     });
   } catch (error) {

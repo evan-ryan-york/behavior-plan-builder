@@ -5,6 +5,7 @@ import { Student, Plan } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Markdown } from "@/components/ui/markdown";
 import { cn } from "@/lib/utils";
 
 interface StepGenerateProps {
@@ -46,7 +47,7 @@ const sections: SectionInfo[] = [
   {
     id: "prevention_strategies",
     title: "Prevention Strategies",
-    description: "Proactive strategies",
+    description: "Proactive strategies to prevent the behavior",
     editable: true,
   },
   {
@@ -65,18 +66,20 @@ const sections: SectionInfo[] = [
 
 const quickFeedbackOptions = [
   "Make it simpler",
-  "Make it more detailed",
-  "More specific to this student",
-  "Adjust for classroom setting",
-  "Adjust for home setting",
+  "More detailed",
+  "More specific to student",
 ];
 
 interface GeneratedContent {
   function_summary: string;
   replacement_behavior: string;
+  replacement_behavior_rationale: string;
   prevention_strategies: string[];
+  prevention_strategies_rationale: string;
   reinforcement_plan: string;
+  reinforcement_plan_rationale: string;
   response_to_behavior: string;
+  response_to_behavior_rationale: string;
 }
 
 export function StepGenerate({
@@ -118,9 +121,13 @@ export function StepGenerate({
       setGeneratedContent({
         function_summary: plan.current_function_summary,
         replacement_behavior: plan.current_replacement_behavior || "",
+        replacement_behavior_rationale: "Rationale not available for previously generated plans. Click 'Rebuild Plan' to generate with rationales.",
         prevention_strategies: preventionStrategies,
+        prevention_strategies_rationale: "Rationale not available for previously generated plans. Click 'Rebuild Plan' to generate with rationales.",
         reinforcement_plan: plan.current_reinforcement_plan || "",
+        reinforcement_plan_rationale: "Rationale not available for previously generated plans. Click 'Rebuild Plan' to generate with rationales.",
         response_to_behavior: plan.current_response_to_behavior || "",
+        response_to_behavior_rationale: "Rationale not available for previously generated plans. Click 'Rebuild Plan' to generate with rationales.",
       });
 
       setSectionsReviewed(
@@ -175,12 +182,17 @@ export function StepGenerate({
     if (!generatedContent) return "";
 
     if (sectionId === "prevention_strategies") {
-      return generatedContent.prevention_strategies
-        .map((s, i) => `${i + 1}. ${s}`)
-        .join("\n");
+      // Join strategies with double line breaks for spacing
+      return generatedContent.prevention_strategies.join("\n\n");
     }
 
     return generatedContent[sectionId] || "";
+  };
+
+  const getSectionRationale = (sectionId: EditableSection): string => {
+    if (!generatedContent) return "";
+    const rationaleKey = `${sectionId}_rationale` as keyof GeneratedContent;
+    return (generatedContent[rationaleKey] as string) || "";
   };
 
   const handleRevise = async () => {
@@ -192,9 +204,7 @@ export function StepGenerate({
     try {
       const currentContent =
         selectedSection === "prevention_strategies"
-          ? generatedContent?.prevention_strategies
-              .map((s, i) => `${i + 1}. ${s}`)
-              .join("\n")
+          ? generatedContent?.prevention_strategies.join("\n\n")
           : generatedContent?.[selectedSection];
 
       const response = await fetch("/api/plans/revise-section", {
@@ -214,12 +224,14 @@ export function StepGenerate({
         throw new Error(data.error || "Failed to revise section");
       }
 
-      // Update the content
+      // Update the content and rationale
+      const rationaleKey = `${selectedSection}_rationale` as keyof GeneratedContent;
       setGeneratedContent((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           [selectedSection]: data.revisedContent,
+          [rationaleKey]: data.rationale,
         };
       });
 
@@ -371,6 +383,15 @@ export function StepGenerate({
     }
   };
 
+  // Format date for display
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   // Loading state
   if (isGenerating) {
     return (
@@ -456,17 +477,14 @@ export function StepGenerate({
 
   // Main editor interface
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-4">
+      {/* Header with save status */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Review & Edit Plan
-          </h2>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground text-sm">
             {allSectionsReviewed
-              ? "All sections reviewed! Ready to finalize."
-              : "Click on each section to review and make changes."}
+              ? "All sections reviewed. Ready to finalize."
+              : "Click any section to review and edit."}
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -499,62 +517,187 @@ export function StepGenerate({
         </div>
       </div>
 
-      {/* Split Pane Layout */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Left: Plan Preview */}
-        <div className="space-y-3">
-          {sections.map((section) => {
-            const isSelected = selectedSection === section.id;
-            const isReviewed = sectionsReviewed.includes(section.id);
-
-            return (
-              <Card
-                key={section.id}
-                className={cn(
-                  "cursor-pointer transition-all",
-                  section.editable
-                    ? "hover:border-primary/50"
-                    : "cursor-default opacity-80",
-                  isSelected && "border-primary ring-2 ring-primary/20"
-                )}
-                onClick={() => handleSectionClick(section.id)}
+      {/* Split Pane Layout - 65/35 */}
+      <div className="grid lg:grid-cols-[1fr_340px] gap-8">
+        {/* Left: Plan Document */}
+        <div className="lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto lg:pr-4">
+          {/* Document Header */}
+          <div className="mb-8 pb-6 border-b">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Behavior Plan: {student.name}
+                </h1>
+                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                  {student.grade_level && (
+                    <span>Grade {student.grade_level}</span>
+                  )}
+                  <span>{formatDate(new Date())}</span>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setGeneratedContent(null);
+                  setSectionsReviewed([]);
+                  setSelectedSection(null);
+                  generatePlan();
+                }}
+                disabled={isGenerating}
+                className="shrink-0"
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div>
-                      <h3 className="font-semibold text-sm flex items-center gap-2">
-                        {section.title}
-                        {!section.editable && (
-                          <span className="text-xs text-muted-foreground font-normal">
-                            (auto-generated)
-                          </span>
-                        )}
-                        {isReviewed && section.editable && (
-                          <svg
-                            className="h-4 w-4 text-green-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        )}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {section.description}
-                      </p>
+                {isGenerating ? (
+                  <>
+                    <svg
+                      className="h-4 w-4 mr-1.5 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Rebuilding...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="h-4 w-4 mr-1.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    Rebuild Plan
+                  </>
+                )}
+              </Button>
+            </div>
+            {plan.target_behavior && (
+              <p className="mt-3 text-sm">
+                <span className="font-medium">Target Behavior:</span>{" "}
+                <span className="text-muted-foreground">{plan.target_behavior}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Plan Sections */}
+          <div className="space-y-0">
+            {sections.map((section, index) => {
+              const isSelected = selectedSection === section.id;
+              const isReviewed = sectionsReviewed.includes(section.id);
+              const isLast = index === sections.length - 1;
+
+              return (
+                <div
+                  key={section.id}
+                  className={cn(
+                    "relative py-6 transition-colors",
+                    section.editable && "cursor-pointer hover:bg-muted/30",
+                    isSelected && "bg-primary/5"
+                  )}
+                  onClick={() => handleSectionClick(section.id)}
+                >
+                  {/* Active indicator - left border */}
+                  {isSelected && (
+                    <div className="absolute left-0 top-6 bottom-6 w-1 bg-primary rounded-full" />
+                  )}
+
+                  <div className={cn(isSelected && "pl-4")}>
+                    {/* Section Header */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div>
+                        <h2 className="text-base font-semibold flex items-center gap-2">
+                          {section.title}
+                          {isReviewed && section.editable && (
+                            <svg
+                              className="h-4 w-4 text-green-600"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {section.description}
+                        </p>
+                      </div>
+                      {section.editable && !isSelected && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSectionClick(section.id);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
                     </div>
-                    {section.editable && (
+
+                    {/* Section Content */}
+                    <div className="text-sm text-foreground">
+                      <Markdown>{getSectionContent(section.id)}</Markdown>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  {!isLast && (
+                    <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right: Editor Panel */}
+        <div className="lg:sticky lg:top-0 lg:self-start">
+          <Card className="border-2">
+            <CardContent className="p-5">
+              {selectedSection ? (
+                <div className="space-y-4">
+                  {/* Section Header */}
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      Editing: {sections.find((s) => s.id === selectedSection)?.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Review and provide feedback for revisions.
+                    </p>
+                  </div>
+
+                  {/* Behavior Science Rationale */}
+                  <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 p-3">
+                    <div className="flex items-start gap-2">
                       <svg
-                        className={cn(
-                          "h-4 w-4 text-muted-foreground transition-transform",
-                          isSelected && "text-primary rotate-90"
-                        )}
+                        className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -563,42 +706,18 @@ export function StepGenerate({
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M9 5l7 7-7 7"
+                          d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                         />
                       </svg>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
-                    {getSectionContent(section.id)}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Right: Editor Panel */}
-        <div className="lg:sticky lg:top-4 lg:self-start">
-          <Card>
-            <CardContent className="p-6">
-              {selectedSection ? (
-                <div className="space-y-4">
-                  {/* Section Header */}
-                  <div>
-                    <h3 className="font-semibold">
-                      Editing:{" "}
-                      {sections.find((s) => s.id === selectedSection)?.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Review the content below and provide feedback for revisions.
-                    </p>
-                  </div>
-
-                  {/* Current Content */}
-                  <div className="rounded-lg bg-muted p-4 max-h-48 overflow-y-auto">
-                    <p className="text-sm whitespace-pre-wrap">
-                      {getSectionContent(selectedSection)}
-                    </p>
+                      <div>
+                        <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">
+                          Behavior Science Rationale
+                        </p>
+                        <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                          {getSectionRationale(selectedSection)}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Quick Feedback Buttons */}
@@ -606,13 +725,13 @@ export function StepGenerate({
                     <p className="text-xs text-muted-foreground mb-2">
                       Quick suggestions:
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {quickFeedbackOptions.map((option) => (
                         <Button
                           key={option}
                           variant="outline"
                           size="sm"
-                          className="text-xs h-7"
+                          className="text-xs h-6 px-2"
                           onClick={() => handleQuickFeedback(option)}
                         >
                           {option}
@@ -623,34 +742,36 @@ export function StepGenerate({
 
                   {/* Feedback Input */}
                   <div>
-                    <label className="text-sm font-medium block mb-2">
+                    <label className="text-xs font-medium block mb-1.5">
                       What would you like to change?
                     </label>
                     <Textarea
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
-                      placeholder="e.g., Make it simpler, add more specific examples, focus on classroom strategies..."
-                      rows={3}
+                      placeholder="e.g., Make it simpler, add examples..."
+                      rows={2}
+                      className="text-sm"
                       disabled={isRevising}
                     />
                   </div>
 
                   {/* Revision Error */}
                   {revisionError && (
-                    <p className="text-sm text-destructive">{revisionError}</p>
+                    <p className="text-xs text-destructive">{revisionError}</p>
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex gap-2">
                     <Button
                       onClick={handleRevise}
                       disabled={!feedback.trim() || isRevising}
                       className="flex-1"
+                      size="sm"
                     >
                       {isRevising ? (
                         <>
                           <svg
-                            className="h-4 w-4 mr-2 animate-spin"
+                            className="h-3 w-3 mr-1.5 animate-spin"
                             fill="none"
                             viewBox="0 0 24 24"
                           >
@@ -671,13 +792,14 @@ export function StepGenerate({
                           Revising...
                         </>
                       ) : (
-                        "Revise This Section"
+                        "Revise"
                       )}
                     </Button>
                     <Button
                       variant="secondary"
                       onClick={handleKeepAsIs}
                       disabled={isRevising}
+                      size="sm"
                     >
                       Keep As Is
                     </Button>
@@ -694,9 +816,9 @@ export function StepGenerate({
                   </button>
                 </div>
               ) : (
-                <div className="text-center py-8">
+                <div className="text-center py-6">
                   <svg
-                    className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4"
+                    className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -710,8 +832,11 @@ export function StepGenerate({
                   </svg>
                   <p className="text-sm text-muted-foreground">
                     {allSectionsReviewed
-                      ? "All sections reviewed! Click Finalize Plan to continue."
-                      : "Click on any section to review and edit it."}
+                      ? "All sections reviewed!"
+                      : "Click a section to edit"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {sectionsReviewed.length} of {sections.filter((s) => s.editable).length} reviewed
                   </p>
                 </div>
               )}
@@ -723,9 +848,9 @@ export function StepGenerate({
       {/* Navigation */}
       <div className="flex items-center justify-between pt-4 border-t">
         {onBack && (
-          <Button variant="ghost" onClick={onBack}>
+          <Button variant="ghost" onClick={onBack} size="sm">
             <svg
-              className="h-4 w-4 mr-2"
+              className="h-4 w-4 mr-1.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -740,33 +865,26 @@ export function StepGenerate({
             Back
           </Button>
         )}
-        <div className="flex items-center gap-2 ml-auto">
-          {!allSectionsReviewed && (
-            <p className="text-sm text-muted-foreground mr-2">
-              {sectionsReviewed.length} of {sections.filter((s) => s.editable).length} sections reviewed
-            </p>
-          )}
-          <Button
-            onClick={handleFinalize}
-            disabled={isSaving}
-            size="lg"
+        <Button
+          onClick={handleFinalize}
+          disabled={isSaving}
+          className="ml-auto"
+        >
+          {isSaving ? "Saving..." : "Finalize Plan"}
+          <svg
+            className="h-4 w-4 ml-1.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            {isSaving ? "Saving..." : "Finalize Plan"}
-            <svg
-              className="h-4 w-4 ml-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </Button>
-        </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </Button>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Student, Plan } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ProgressIndicator } from "@/components/plan-flow/progress-indicator";
 import { StepSelectStudent } from "@/components/plan-flow/step-select-student";
@@ -107,9 +108,16 @@ export function PlanCreationFlow({
     // Only allow going back to previously completed steps
     if (step < currentStep) {
       setCurrentStep(step);
-      // Reset assessment sub-step when going back
+      // Handle assessment sub-step when going back
       if (step < 4) {
         setAssessmentSubStep("questions");
+      } else if (step === 4) {
+        // If assessment is complete, show results instead of questions
+        if (createdPlan?.determined_function) {
+          setAssessmentSubStep("results");
+        } else {
+          setAssessmentSubStep("questions");
+        }
       }
     }
   };
@@ -233,8 +241,11 @@ export function PlanCreationFlow({
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 md:px-6 py-8">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 container mx-auto px-4 md:px-6 py-6">
+        <div className={cn(
+          "mx-auto",
+          currentStep === 5 ? "max-w-6xl" : "max-w-4xl"
+        )}>
           {/* Step 1: Select Student */}
           {currentStep === 1 && (
             <StepSelectStudent

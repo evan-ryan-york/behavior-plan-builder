@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { generateText } from "ai";
+import { generateObject } from "ai";
+import { z } from "zod";
 import { getAnthropic, DEFAULT_MODEL } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { functionInfo, BehaviorFunction } from "@/lib/assessment-questions";
@@ -94,38 +95,58 @@ ${currentContent}
 USER FEEDBACK:
 ${userFeedback}
 
-Revise this section based on the user's feedback. Keep it consistent with the rest of the plan. Maintain the same level of specificity and professionalism. Use the student's name where appropriate.
+Revise this section based on the user's feedback. Keep it CONCISE. Use the student's name where appropriate.
 
-${sectionName === "prevention_strategies" ? "Return the strategies as a JSON array of strings, with each strategy as a separate item." : "Return ONLY the revised content for this section, no additional commentary or explanation."}`;
+CRITICAL: Keep content SHORT and scannable. Educators need quick-reference content.
 
-    // Generate the revised content
-    const { text } = await generateText({
+FORMATTING RULES:
+- Use **bold** for key terms only
+- Use bullet points (-) for lists
+- Use numbered lists (1. 2. 3.) for sequential steps
+- DO NOT use headers (## or ###) - section titles are already provided
+- Keep each bullet point to 1-2 sentences max
+
+${sectionName === "prevention_strategies"
+  ? "Return exactly 3 strategies. Each strategy should have a **bold title** followed by 1-2 sentences."
+  : sectionName === "response_to_behavior"
+    ? "Return exactly 3 numbered steps (1. 2. 3.), each 1-2 sentences."
+    : sectionName === "replacement_behavior"
+      ? "Return 3-4 bullet points max describing ONE replacement behavior."
+      : sectionName === "reinforcement_plan"
+        ? "Return 3-4 items using **bold title** - explanation format."
+        : "Return the revised content."}
+
+Also provide a brief (1-2 sentence) behavior science rationale explaining WHY these recommendations are appropriate. Reference ABA concepts like functional equivalence, antecedent interventions, differential reinforcement, extinction, etc.`;
+
+    // Define schema based on section type
+    const schema = sectionName === "prevention_strategies"
+      ? z.object({
+          content: z.array(z.string()).min(3).max(3).describe("Exactly 3 prevention strategies"),
+          rationale: z.string().describe("1-2 sentence behavior science rationale"),
+        })
+      : z.object({
+          content: z.string().describe("The revised section content"),
+          rationale: z.string().describe("1-2 sentence behavior science rationale"),
+        });
+
+    // Generate the revised content with rationale
+    const { object } = await generateObject({
       model: getAnthropic()(DEFAULT_MODEL),
+      schema,
       prompt,
     });
 
-    // Clean up the response - remove any markdown or extra formatting
-    let revisedContent = text.trim();
+    // Process content for storage
+    let revisedContent: string;
+    let responseContent: string | string[];
 
-    // For prevention strategies, try to parse as JSON array
     if (sectionName === "prevention_strategies") {
-      try {
-        // Try to extract JSON array from the response
-        const jsonMatch = revisedContent.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (Array.isArray(parsed)) {
-            revisedContent = JSON.stringify(parsed);
-          }
-        }
-      } catch {
-        // If parsing fails, try to convert numbered list to array
-        const lines = revisedContent.split("\n").filter(line => line.trim());
-        const strategies = lines.map(line => line.replace(/^\d+\.\s*/, "").trim()).filter(Boolean);
-        if (strategies.length > 0) {
-          revisedContent = JSON.stringify(strategies);
-        }
-      }
+      const strategies = (object as { content: string[]; rationale: string }).content;
+      revisedContent = JSON.stringify(strategies);
+      responseContent = strategies;
+    } else {
+      revisedContent = (object as { content: string; rationale: string }).content;
+      responseContent = revisedContent;
     }
 
     // Update the plan with revised content
@@ -142,19 +163,10 @@ ${sectionName === "prevention_strategies" ? "Return the strategies as a JSON arr
       return NextResponse.json({ error: "Failed to save revised content" }, { status: 500 });
     }
 
-    // For prevention strategies, return as array for the UI
-    let responseContent = revisedContent;
-    if (sectionName === "prevention_strategies") {
-      try {
-        responseContent = JSON.parse(revisedContent);
-      } catch {
-        // Keep as string if not valid JSON
-      }
-    }
-
     return NextResponse.json({
       success: true,
       revisedContent: responseContent,
+      rationale: object.rationale,
     });
   } catch (error) {
     console.error("Error revising section:", error);

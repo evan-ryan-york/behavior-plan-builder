@@ -135,27 +135,49 @@ export default function PrintPage() {
   return (
     <>
       <style jsx global>{`
+        /* Override all theme variables for print */
+        :root {
+          --background: #ffffff !important;
+          --foreground: #333333 !important;
+          --muted: #f5f5f5 !important;
+          --card: #ffffff !important;
+        }
         @media print {
           html, body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            background: white !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
           }
           @page {
             margin: 0.75in;
             size: letter;
           }
         }
-        html, body {
-          background: white !important;
+        html {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
         }
         body {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
           font-family: system-ui, -apple-system, sans-serif;
           line-height: 1.5;
           color: #333 !important;
           max-width: 8.5in;
           margin: 0 auto;
           padding: 1rem;
+        }
+        /* Override any Tailwind background classes and all parent elements */
+        *, *::before, *::after,
+        .bg-background, .bg-muted, .bg-muted\/30, .bg-card, .bg-accent,
+        main, div, section {
+          background: transparent !important;
+          background-color: transparent !important;
+        }
+        html, body {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
         }
         .print-header {
           text-align: center;

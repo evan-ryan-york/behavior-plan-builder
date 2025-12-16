@@ -121,7 +121,7 @@ export default async function PlanDetailPage({ params }: PageProps) {
         </div>
         {plan.status === "in_progress" && student && (
           <Button asChild>
-            <Link href={`/dashboard/plans/new?studentId=${student.id}`}>
+            <Link href={`/dashboard/plans/new?planId=${plan.id}`}>
               Continue Plan
             </Link>
           </Button>
@@ -189,7 +189,7 @@ export default async function PlanDetailPage({ params }: PageProps) {
               </p>
               {student && (
                 <Button asChild>
-                  <Link href={`/dashboard/plans/new?studentId=${student.id}`}>
+                  <Link href={`/dashboard/plans/new?planId=${plan.id}`}>
                     Continue Plan
                   </Link>
                 </Button>

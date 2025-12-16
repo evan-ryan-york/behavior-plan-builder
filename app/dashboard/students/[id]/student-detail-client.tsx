@@ -183,9 +183,7 @@ export function StudentDetailClient({
                   <div className="flex gap-2 flex-shrink-0">
                     {plan.status === "in_progress" ? (
                       <Button asChild>
-                        <Link
-                          href={`/dashboard/plans/new?studentId=${student.id}`}
-                        >
+                        <Link href={`/dashboard/plans/new?planId=${plan.id}`}>
                           Continue
                         </Link>
                       </Button>

@@ -17,25 +17,71 @@ import { StepGenerate } from "@/components/plan-flow/step-generate";
 interface PlanCreationFlowProps {
   students: Student[];
   preselectedStudentId?: string;
+  existingPlan?: Plan | null;
+  existingStudent?: Student | null;
 }
 
 // Assessment flow has sub-steps within step 4
 type AssessmentSubStep = "questions" | "followup" | "results";
 
+// Determine initial step based on existing plan state
+function getInitialStep(plan: Plan | null | undefined): {
+  step: number;
+  subStep: AssessmentSubStep;
+} {
+  if (!plan) {
+    return { step: 1, subStep: "questions" };
+  }
+
+  // If plan exists with behavior details, go to step 4 (assessment)
+  if (plan.target_behavior && plan.behavior_frequency && plan.behavior_intensity) {
+    // Check if assessment is complete
+    if (plan.status === "assessment_complete" || plan.determined_function) {
+      return { step: 5, subStep: "questions" };
+    }
+    // Check if assessment responses exist
+    if (plan.assessment_responses && Object.keys(plan.assessment_responses).length > 0) {
+      // If all 21 questions answered, go to followup
+      if (Object.keys(plan.assessment_responses).length === 21) {
+        return { step: 4, subStep: "followup" };
+      }
+    }
+    return { step: 4, subStep: "questions" };
+  }
+
+  // If plan exists but no behavior details, start at step 3
+  return { step: 3, subStep: "questions" };
+}
+
 export function PlanCreationFlow({
   students,
   preselectedStudentId,
+  existingPlan,
+  existingStudent,
 }: PlanCreationFlowProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [assessmentSubStep, setAssessmentSubStep] =
-    useState<AssessmentSubStep>("questions");
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [createdPlan, setCreatedPlan] = useState<Plan | null>(null);
 
-  // Handle preselected student from URL
+  // Determine initial state based on existing plan
+  const initialState = getInitialStep(existingPlan);
+
+  const [currentStep, setCurrentStep] = useState(initialState.step);
+  const [assessmentSubStep, setAssessmentSubStep] =
+    useState<AssessmentSubStep>(initialState.subStep);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(
+    existingStudent || null
+  );
+  const [createdPlan, setCreatedPlan] = useState<Plan | null>(
+    existingPlan || null
+  );
+
+  // Handle preselected student from URL (only if no existing plan)
   useEffect(() => {
+    if (existingPlan || existingStudent) {
+      // Already handled via props
+      return;
+    }
+
     const studentId = preselectedStudentId || searchParams.get("studentId");
     if (studentId) {
       const student = students.find((s) => s.id === studentId);
@@ -44,7 +90,7 @@ export function PlanCreationFlow({
         setCurrentStep(2);
       }
     }
-  }, [preselectedStudentId, searchParams, students]);
+  }, [preselectedStudentId, searchParams, students, existingPlan, existingStudent]);
 
   const handleStepClick = (step: number) => {
     // Only allow going back to previously completed steps
@@ -190,6 +236,7 @@ export function PlanCreationFlow({
           {currentStep === 3 && selectedStudent && (
             <StepBehaviorDetails
               student={selectedStudent}
+              existingPlan={createdPlan}
               onBack={handleStep3Back}
               onContinue={handleStep3Continue}
             />

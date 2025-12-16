@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 interface StepBehaviorDetailsProps {
   student: Student;
+  existingPlan?: Plan | null;
   onBack: () => void;
   onContinue: (plan: Plan) => void;
 }
@@ -47,12 +48,20 @@ const intensityOptions = [
 
 export function StepBehaviorDetails({
   student,
+  existingPlan,
   onBack,
   onContinue,
 }: StepBehaviorDetailsProps) {
-  const [targetBehavior, setTargetBehavior] = useState("");
-  const [frequency, setFrequency] = useState("");
-  const [intensity, setIntensity] = useState("");
+  // Initialize from existing plan if available
+  const [targetBehavior, setTargetBehavior] = useState(
+    existingPlan?.target_behavior || ""
+  );
+  const [frequency, setFrequency] = useState(
+    existingPlan?.behavior_frequency || ""
+  );
+  const [intensity, setIntensity] = useState(
+    existingPlan?.behavior_intensity || ""
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{
@@ -97,27 +106,50 @@ export function StepBehaviorDetails({
       return;
     }
 
-    const { data, error: insertError } = await supabase
-      .from("plans")
-      .insert({
-        user_id: user.id,
-        student_id: student.id,
-        status: "in_progress",
-        target_behavior: targetBehavior.trim(),
-        behavior_frequency: frequency,
-        behavior_intensity: intensity,
-      })
-      .select()
-      .single();
+    // If we have an existing plan, update it; otherwise create a new one
+    if (existingPlan) {
+      const { data, error: updateError } = await supabase
+        .from("plans")
+        .update({
+          target_behavior: targetBehavior.trim(),
+          behavior_frequency: frequency,
+          behavior_intensity: intensity,
+        })
+        .eq("id", existingPlan.id)
+        .select()
+        .single();
 
-    if (insertError) {
-      setError(insertError.message);
+      if (updateError) {
+        setError(updateError.message);
+        setLoading(false);
+        return;
+      }
+
       setLoading(false);
-      return;
-    }
+      onContinue(data as Plan);
+    } else {
+      const { data, error: insertError } = await supabase
+        .from("plans")
+        .insert({
+          user_id: user.id,
+          student_id: student.id,
+          status: "in_progress",
+          target_behavior: targetBehavior.trim(),
+          behavior_frequency: frequency,
+          behavior_intensity: intensity,
+        })
+        .select()
+        .single();
 
-    setLoading(false);
-    onContinue(data as Plan);
+      if (insertError) {
+        setError(insertError.message);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+      onContinue(data as Plan);
+    }
   };
 
   return (

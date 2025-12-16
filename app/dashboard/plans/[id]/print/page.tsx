@@ -136,19 +136,23 @@ export default function PrintPage() {
     <>
       <style jsx global>{`
         @media print {
-          body {
+          html, body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            background: white !important;
           }
           @page {
             margin: 0.75in;
             size: letter;
           }
         }
+        html, body {
+          background: white !important;
+        }
         body {
           font-family: system-ui, -apple-system, sans-serif;
           line-height: 1.5;
-          color: #333;
+          color: #333 !important;
           max-width: 8.5in;
           margin: 0 auto;
           padding: 1rem;

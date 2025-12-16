@@ -18,8 +18,8 @@ const steps: Step[] = [
   { number: 2, label: "Student Details", enabled: true },
   { number: 3, label: "Behavior Details", enabled: true },
   { number: 4, label: "Assessment", enabled: true },
-  { number: 5, label: "Generate Plan", enabled: false },
-  { number: 6, label: "Review & Export", enabled: false },
+  { number: 5, label: "Generate Plan", enabled: true },
+  { number: 6, label: "Review & Export", enabled: true },
 ];
 
 export function ProgressIndicator({

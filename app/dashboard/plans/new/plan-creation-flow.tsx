@@ -13,6 +13,7 @@ import { StepAssessment } from "@/components/plan-flow/step-assessment";
 import { StepFollowup } from "@/components/plan-flow/step-followup";
 import { StepResults } from "@/components/plan-flow/step-results";
 import { StepGenerate } from "@/components/plan-flow/step-generate";
+import { StepReview } from "@/components/plan-flow/step-review";
 
 interface PlanCreationFlowProps {
   students: Student[];
@@ -31,6 +32,16 @@ function getInitialStep(plan: Plan | null | undefined): {
 } {
   if (!plan) {
     return { step: 1, subStep: "questions" };
+  }
+
+  // If plan is complete, go to step 6 (review)
+  if (plan.status === "complete") {
+    return { step: 6, subStep: "questions" };
+  }
+
+  // If plan has generated content, go to step 5 (generate/edit)
+  if (plan.status === "generating" || plan.current_function_summary) {
+    return { step: 5, subStep: "questions" };
   }
 
   // If plan exists with behavior details, go to step 4 (assessment)
@@ -158,6 +169,17 @@ export function PlanCreationFlow({
     setCurrentStep(5);
   };
 
+  // Step 5: Generate handlers
+  const handleGenerateBack = () => {
+    setCurrentStep(4);
+    setAssessmentSubStep("results");
+  };
+
+  const handleGenerateContinue = (updatedPlan: Plan) => {
+    setCreatedPlan(updatedPlan);
+    setCurrentStep(6);
+  };
+
   const handleSaveAndExit = () => {
     if (selectedStudent) {
       router.push(`/dashboard/students/${selectedStudent.id}`);
@@ -274,9 +296,19 @@ export function PlanCreationFlow({
             </>
           )}
 
-          {/* Step 5: Generate Plan (placeholder) */}
+          {/* Step 5: Generate Plan */}
           {currentStep === 5 && selectedStudent && createdPlan && (
-            <StepGenerate student={selectedStudent} plan={createdPlan} />
+            <StepGenerate
+              student={selectedStudent}
+              plan={createdPlan}
+              onBack={handleGenerateBack}
+              onContinue={handleGenerateContinue}
+            />
+          )}
+
+          {/* Step 6: Review & Export */}
+          {currentStep === 6 && selectedStudent && createdPlan && (
+            <StepReview student={selectedStudent} plan={createdPlan} />
           )}
         </div>
       </main>

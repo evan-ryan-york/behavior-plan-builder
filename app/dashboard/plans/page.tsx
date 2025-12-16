@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function PlansPage() {
   return (
-    <div className="container py-8">
+    <div className="container mx-auto px-4 md:px-6 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">My Plans</h1>
         <p className="text-muted-foreground mt-1">

@@ -19,7 +19,7 @@ export function StudentDetailClient({ student, plans }: StudentDetailClientProps
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   return (
-    <div className="container py-8">
+    <div className="container mx-auto px-4 md:px-6 py-8">
       <div className="mb-6">
         <Link
           href="/dashboard/students"

@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <div className="container py-8">
+    <div className="container mx-auto px-4 md:px-6 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
           Welcome to your dashboard

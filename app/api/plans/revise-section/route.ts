@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
-import { anthropic, DEFAULT_MODEL } from "@/lib/ai";
+import { getAnthropic, DEFAULT_MODEL } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { functionInfo, BehaviorFunction } from "@/lib/assessment-questions";
 
@@ -100,7 +100,7 @@ ${sectionName === "prevention_strategies" ? "Return the strategies as a JSON arr
 
     // Generate the revised content
     const { text } = await generateText({
-      model: anthropic(DEFAULT_MODEL),
+      model: getAnthropic()(DEFAULT_MODEL),
       prompt,
     });
 

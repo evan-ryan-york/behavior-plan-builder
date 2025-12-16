@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { anthropic, DEFAULT_MODEL } from "@/lib/ai";
+import { getAnthropic, DEFAULT_MODEL } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { functionInfo, BehaviorFunction } from "@/lib/assessment-questions";
 
@@ -126,7 +126,7 @@ Important guidelines:
 
     // Generate the plan content using Vercel AI SDK
     const { object } = await generateObject({
-      model: anthropic(DEFAULT_MODEL),
+      model: getAnthropic()(DEFAULT_MODEL),
       schema: planSchema,
       prompt,
     });

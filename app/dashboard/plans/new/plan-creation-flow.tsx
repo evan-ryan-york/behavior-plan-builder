@@ -9,12 +9,18 @@ import { ProgressIndicator } from "@/components/plan-flow/progress-indicator";
 import { StepSelectStudent } from "@/components/plan-flow/step-select-student";
 import { StepStudentContext } from "@/components/plan-flow/step-student-context";
 import { StepBehaviorDetails } from "@/components/plan-flow/step-behavior-details";
-import { Card, CardContent } from "@/components/ui/card";
+import { StepAssessment } from "@/components/plan-flow/step-assessment";
+import { StepFollowup } from "@/components/plan-flow/step-followup";
+import { StepResults } from "@/components/plan-flow/step-results";
+import { StepGenerate } from "@/components/plan-flow/step-generate";
 
 interface PlanCreationFlowProps {
   students: Student[];
   preselectedStudentId?: string;
 }
+
+// Assessment flow has sub-steps within step 4
+type AssessmentSubStep = "questions" | "followup" | "results";
 
 export function PlanCreationFlow({
   students,
@@ -23,6 +29,8 @@ export function PlanCreationFlow({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
+  const [assessmentSubStep, setAssessmentSubStep] =
+    useState<AssessmentSubStep>("questions");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [createdPlan, setCreatedPlan] = useState<Plan | null>(null);
 
@@ -39,8 +47,13 @@ export function PlanCreationFlow({
   }, [preselectedStudentId, searchParams, students]);
 
   const handleStepClick = (step: number) => {
+    // Only allow going back to previously completed steps
     if (step < currentStep) {
       setCurrentStep(step);
+      // Reset assessment sub-step when going back
+      if (step < 4) {
+        setAssessmentSubStep("questions");
+      }
     }
   };
 
@@ -68,6 +81,35 @@ export function PlanCreationFlow({
   const handleStep3Continue = (plan: Plan) => {
     setCreatedPlan(plan);
     setCurrentStep(4);
+    setAssessmentSubStep("questions");
+  };
+
+  // Step 4: Assessment sub-step handlers
+  const handleAssessmentBack = () => {
+    setCurrentStep(3);
+  };
+
+  const handleAssessmentContinue = (updatedPlan: Plan) => {
+    setCreatedPlan(updatedPlan);
+    setAssessmentSubStep("followup");
+  };
+
+  const handleFollowupBack = () => {
+    setAssessmentSubStep("questions");
+  };
+
+  const handleFollowupContinue = (updatedPlan: Plan) => {
+    setCreatedPlan(updatedPlan);
+    setAssessmentSubStep("results");
+  };
+
+  const handleResultsBack = () => {
+    setAssessmentSubStep("followup");
+  };
+
+  const handleResultsContinue = (updatedPlan: Plan) => {
+    setCreatedPlan(updatedPlan);
+    setCurrentStep(5);
   };
 
   const handleSaveAndExit = () => {
@@ -77,6 +119,10 @@ export function PlanCreationFlow({
       router.push("/dashboard/students");
     }
   };
+
+  // Determine the effective step for the progress indicator
+  // Step 4 has sub-steps, but they all show as step 4 in the indicator
+  const effectiveStep = currentStep;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -112,7 +158,7 @@ export function PlanCreationFlow({
       <div className="border-b bg-muted/30 py-4">
         <div className="container mx-auto px-4 md:px-6">
           <ProgressIndicator
-            currentStep={currentStep}
+            currentStep={effectiveStep}
             onStepClick={handleStepClick}
           />
         </div>
@@ -121,6 +167,7 @@ export function PlanCreationFlow({
       {/* Main Content */}
       <main className="flex-1 container mx-auto px-4 md:px-6 py-8">
         <div className="max-w-4xl mx-auto">
+          {/* Step 1: Select Student */}
           {currentStep === 1 && (
             <StepSelectStudent
               students={students}
@@ -130,6 +177,7 @@ export function PlanCreationFlow({
             />
           )}
 
+          {/* Step 2: Student Context */}
           {currentStep === 2 && selectedStudent && (
             <StepStudentContext
               student={selectedStudent}
@@ -138,6 +186,7 @@ export function PlanCreationFlow({
             />
           )}
 
+          {/* Step 3: Behavior Details */}
           {currentStep === 3 && selectedStudent && (
             <StepBehaviorDetails
               student={selectedStudent}
@@ -146,62 +195,41 @@ export function PlanCreationFlow({
             />
           )}
 
-          {currentStep === 4 && (
-            <div className="space-y-6 text-center">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  Assessment
-                </h2>
-                <p className="text-muted-foreground mt-2">
-                  Step 4: Function Assessment
-                </p>
-              </div>
+          {/* Step 4: Assessment (with sub-steps) */}
+          {currentStep === 4 && selectedStudent && createdPlan && (
+            <>
+              {assessmentSubStep === "questions" && (
+                <StepAssessment
+                  student={selectedStudent}
+                  plan={createdPlan}
+                  onBack={handleAssessmentBack}
+                  onContinue={handleAssessmentContinue}
+                />
+              )}
 
-              <Card className="max-w-md mx-auto">
-                <CardContent className="p-8">
-                  <div className="mb-4">
-                    <svg
-                      className="h-12 w-12 mx-auto text-muted-foreground/50"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">Coming Soon</h3>
-                  <p className="text-muted-foreground text-sm mb-6">
-                    The function assessment step will help identify why the
-                    behavior is occurring. This feature is under development.
-                  </p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Your plan has been saved as &quot;In Progress&quot; and you can
-                    continue later.
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    <Button asChild>
-                      <Link
-                        href={
-                          selectedStudent
-                            ? `/dashboard/students/${selectedStudent.id}`
-                            : "/dashboard/plans"
-                        }
-                      >
-                        View Student Profile
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                      <Link href="/dashboard/plans">View All Plans</Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+              {assessmentSubStep === "followup" && (
+                <StepFollowup
+                  student={selectedStudent}
+                  plan={createdPlan}
+                  onBack={handleFollowupBack}
+                  onContinue={handleFollowupContinue}
+                />
+              )}
+
+              {assessmentSubStep === "results" && (
+                <StepResults
+                  student={selectedStudent}
+                  plan={createdPlan}
+                  onBack={handleResultsBack}
+                  onContinue={handleResultsContinue}
+                />
+              )}
+            </>
+          )}
+
+          {/* Step 5: Generate Plan (placeholder) */}
+          {currentStep === 5 && selectedStudent && createdPlan && (
+            <StepGenerate student={selectedStudent} plan={createdPlan} />
           )}
         </div>
       </main>

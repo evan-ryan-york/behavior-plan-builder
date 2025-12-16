@@ -15,11 +15,13 @@ export interface Plan {
   updated_at: string;
   user_id: string;
   student_id: string;
-  status: "draft" | "in_progress" | "complete";
+  status: "draft" | "in_progress" | "assessment_complete" | "complete";
   target_behavior: string | null;
   behavior_frequency: string | null;
   behavior_intensity: string | null;
-  function_scores: Record<string, number> | null;
+  assessment_responses: Record<string, string> | null;
+  function_scores: Record<string, number | null> | null;
+  calculated_function: string | null;
   determined_function: string | null;
   whats_been_tried: string | null;
   implementer: string | null;

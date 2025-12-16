@@ -4,17 +4,59 @@ import { useState } from "react";
 import Link from "next/link";
 import { Student, Plan } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StudentFormModal } from "@/components/student-form-modal";
 import { DeleteStudentDialog } from "@/components/delete-student-dialog";
+import { cn } from "@/lib/utils";
 
 interface StudentDetailClientProps {
   student: Student;
   plans: Plan[];
 }
 
-export function StudentDetailClient({ student, plans }: StudentDetailClientProps) {
+function getStatusBadgeStyles(status: string) {
+  switch (status) {
+    case "complete":
+      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "in_progress":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "draft":
+    default:
+      return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400";
+  }
+}
+
+function formatStatus(status: string) {
+  switch (status) {
+    case "in_progress":
+      return "In Progress";
+    case "complete":
+      return "Complete";
+    case "draft":
+    default:
+      return "Draft";
+  }
+}
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function StudentDetailClient({
+  student,
+  plans,
+}: StudentDetailClientProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -33,7 +75,9 @@ export function StudentDetailClient({ student, plans }: StudentDetailClientProps
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{student.name}</h1>
           {student.grade_level && (
-            <p className="text-muted-foreground mt-1">{student.grade_level} Grade</p>
+            <p className="text-muted-foreground mt-1">
+              {student.grade_level} Grade
+            </p>
           )}
         </div>
         <div className="flex gap-2">
@@ -56,7 +100,9 @@ export function StudentDetailClient({ student, plans }: StudentDetailClientProps
           </CardHeader>
           <CardContent>
             {student.about ? (
-              <p className="text-muted-foreground whitespace-pre-wrap">{student.about}</p>
+              <p className="text-muted-foreground whitespace-pre-wrap">
+                {student.about}
+              </p>
             ) : (
               <p className="text-muted-foreground italic">No information added</p>
             )}
@@ -66,13 +112,13 @@ export function StudentDetailClient({ student, plans }: StudentDetailClientProps
         <Card>
           <CardHeader>
             <CardTitle>Interests</CardTitle>
-            <CardDescription>
-              Helpful for reinforcement planning
-            </CardDescription>
+            <CardDescription>Helpful for reinforcement planning</CardDescription>
           </CardHeader>
           <CardContent>
             {student.interests ? (
-              <p className="text-muted-foreground whitespace-pre-wrap">{student.interests}</p>
+              <p className="text-muted-foreground whitespace-pre-wrap">
+                {student.interests}
+              </p>
             ) : (
               <p className="text-muted-foreground italic">No interests added</p>
             )}
@@ -91,7 +137,7 @@ export function StudentDetailClient({ student, plans }: StudentDetailClientProps
         </div>
         <Button asChild>
           <Link href={`/dashboard/plans/new?studentId=${student.id}`}>
-            Create New Plan
+            New Plan
           </Link>
         </Button>
       </div>
@@ -100,7 +146,8 @@ export function StudentDetailClient({ student, plans }: StudentDetailClientProps
         <Card className="text-center py-12">
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              No plans yet. Create a behavior intervention plan for {student.name}.
+              No plans yet. Create a behavior intervention plan for{" "}
+              {student.name}.
             </p>
             <Button asChild>
               <Link href={`/dashboard/plans/new?studentId=${student.id}`}>
@@ -113,19 +160,41 @@ export function StudentDetailClient({ student, plans }: StudentDetailClientProps
         <div className="grid gap-4">
           {plans.map((plan) => (
             <Card key={plan.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {plan.target_behavior || "Untitled Plan"}
-                    </CardTitle>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CardTitle className="text-lg truncate">
+                        {plan.target_behavior || "Untitled Plan"}
+                      </CardTitle>
+                      <span
+                        className={cn(
+                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                          getStatusBadgeStyles(plan.status)
+                        )}
+                      >
+                        {formatStatus(plan.status)}
+                      </span>
+                    </div>
                     <CardDescription>
-                      Status: {plan.status.charAt(0).toUpperCase() + plan.status.slice(1).replace("_", " ")}
+                      Created {formatDate(plan.created_at)}
                     </CardDescription>
                   </div>
-                  <Button asChild variant="outline">
-                    <Link href={`/dashboard/plans/${plan.id}`}>View Plan</Link>
-                  </Button>
+                  <div className="flex gap-2 flex-shrink-0">
+                    {plan.status === "in_progress" ? (
+                      <Button asChild>
+                        <Link
+                          href={`/dashboard/plans/new?studentId=${student.id}`}
+                        >
+                          Continue
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button asChild variant="outline">
+                        <Link href={`/dashboard/plans/${plan.id}`}>View</Link>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
             </Card>

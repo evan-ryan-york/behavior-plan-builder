@@ -47,6 +47,10 @@ export interface Plan {
   sections_reviewed: string[];
   finalized_at: string | null;
   revision_counts: Record<string, number>;
+  // Sharing
+  share_token: string | null;
+  share_enabled: boolean;
+  share_created_at: string | null;
 }
 
 export type PlanSection =

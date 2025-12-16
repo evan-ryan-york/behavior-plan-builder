@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Markdown } from "@/components/ui/markdown";
 import { functionInfo, BehaviorFunction } from "@/lib/assessment-questions";
+import { ExportDropdown } from "@/components/export-dropdown";
 
 interface StepReviewProps {
   student: Student;
@@ -74,15 +75,20 @@ export function StepReview({ student, plan }: StepReviewProps) {
         )}
       </div>
 
-      {/* Coming Soon Card */}
-      <Card className="max-w-2xl mx-auto border-dashed">
-        <CardContent className="p-6 text-center">
-          <div className="text-3xl mb-2">🚧</div>
-          <p className="text-sm text-muted-foreground">
-            Export and sharing options coming in Session 7!
-          </p>
-        </CardContent>
-      </Card>
+      {/* Export Actions */}
+      <div className="flex justify-center gap-4">
+        <Button asChild variant="outline">
+          <Link href={`/dashboard/plans/${plan.id}`}>
+            View Full Plan
+          </Link>
+        </Button>
+        <ExportDropdown
+          planId={plan.id}
+          studentName={student.name}
+          shareToken={plan.share_token}
+          shareEnabled={plan.share_enabled}
+        />
+      </div>
 
       {/* Final Plan Display */}
       <div className="max-w-3xl mx-auto space-y-6">
